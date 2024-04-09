@@ -623,7 +623,7 @@ def main(options=None):
     viterbiData = [path, emissions, states, initialTransitionMatrix, initialEmissionMatrix]
     vitLearn = ViterbiLearning(viterbiData)
     estimatedStates = vitLearn.performViterbiLearning()
-    print(estimatedStates)
+    #print(estimatedStates)
     vitLearn.generateBedFile(chrName, estimatedStates, cpgSitesAndProbs, thisCommandLine.args.outputPrefix)
 
 
