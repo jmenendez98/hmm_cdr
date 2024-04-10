@@ -603,14 +603,14 @@ class ViterbiLearning:
             for threshold in cpgThresholds:
                 file.write(str(threshold) + ', ')
         
-        emissionMatrix_output = outputPrefix + '.emissionMatrix.csv'
+        emissionMatrix_output = outputPrefix + '.emission_matrix.csv'
         emissionMatrix_df = pd.DataFrame(index=emissions, columns=states)
         for key, value in emissionMatrix.items():
             row, col = key[1], key[0]
             emissionMatrix_df.at[row, col] = value
         emissionMatrix_df.to_csv(emissionMatrix_output)
 
-        transitionMatrix_output = outputPrefix + '.transitionMatrix.csv'
+        transitionMatrix_output = outputPrefix + '.transition_matrix.csv'
         transitionMatrix_df = pd.DataFrame(index=states, columns=states)
         for key, value in transitionMatrix.items():
             row, col = key[1], key[0]
