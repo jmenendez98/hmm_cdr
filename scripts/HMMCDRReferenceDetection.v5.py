@@ -1,10 +1,13 @@
 import numpy as np
+import pandas as pd
 import argparse
 
 ########################################################################
 # 2/1 Working on adding a 3rd 'CDR Transition' state
 # 2/4 Working on adding third emmision and calculating thresholds within script(so you dont have to pass in with -c)
 # 2/6 created 'strict' windowed method to calculate CDR transitions, want to pass them into this file with -t and have that be the third state
+
+# 4/4 adding log output, which contains emission thresholds(boundaries between states). Outputs those and emission/transition matrices
 ########################################################################
 
 ########################################################################
@@ -578,9 +581,41 @@ class ViterbiLearning:
             output_lines.append( line )
 
         # Output CDR transition regions to a separate BED file
-        with open(outputPrefix, "w") as file:
+        output = outputPrefix + '.bed'
+        with open(output, "w") as file:
             for line in output_lines:
                 file.write(line)
+
+    def generateLogFiles(self, emissions, states, cpgThresholds, emissionMatrix, transitionMatrix, outputPrefix):
+        '''
+        Creates log files that contain the emission boundaries + emission/transition matrices
+
+        Attributes:
+        - cpgThresholds: 
+        - emissionMatrix: 
+        - transitionMatrix:
+        - outputPrefix:
+        '''
+
+        # write the file with emission boundaries
+        thresholds_output = outputPrefix + '.emission_boundaries.csv'
+        with open(thresholds_output, "w") as file:
+            for threshold in cpgThresholds:
+                file.write(str(threshold) + ', ')
+        
+        emissionMatrix_output = outputPrefix + '.emissionMatrix.csv'
+        emissionMatrix_df = pd.DataFrame(index=emissions, columns=states)
+        for key, value in emissionMatrix.items():
+            row, col = key[1], key[0]
+            emissionMatrix_df.at[row, col] = value
+        emissionMatrix_df.to_csv(emissionMatrix_output)
+
+        transitionMatrix_output = outputPrefix + '.transitionMatrix.csv'
+        transitionMatrix_df = pd.DataFrame(index=states, columns=states)
+        for key, value in transitionMatrix.items():
+            row, col = key[1], key[0]
+            transitionMatrix_df.at[row, col] = value
+        transitionMatrix_df.to_csv(transitionMatrix_output)
 
 
 def main(options=None):
@@ -606,8 +641,14 @@ def main(options=None):
         chrName = matrixEstimator.getChrName()
         cpgSitesAndProbs = matrixEstimator.getCpGSitesAndProbs()
     else:
-        initialTransitionMatrix = {'AA': thisCommandLine.args.aa/100, 'AB': thisCommandLine.args.ab/100, 'BA': thisCommandLine.args.ba/100, 'BB': thisCommandLine.args.bb/100}
-        initialEmissionMatrix = {'Ax': thisCommandLine.args.ax/100, 'Ay': thisCommandLine.args.ay/100, 'Bx': thisCommandLine.args.bx/100, 'By': thisCommandLine.args.by/100}
+        initialTransitionMatrix = {'AA': thisCommandLine.args.aa/100, 
+                                   'AB': thisCommandLine.args.ab/100, 
+                                   'BA': thisCommandLine.args.ba/100, 
+                                   'BB': thisCommandLine.args.bb/100}
+        initialEmissionMatrix = {'Ax': thisCommandLine.args.ax/100, 
+                                 'Ay': thisCommandLine.args.ay/100, 
+                                 'Bx': thisCommandLine.args.bx/100, 
+                                 'By': thisCommandLine.args.by/100}
         # Creates pathEstimator object to get initial transition and emission matrix
         pathEstimator = PathEstimate(thisCommandLine.args.modPosFile)
         path = pathEstimator.getPath()
@@ -623,8 +664,16 @@ def main(options=None):
     viterbiData = [path, emissions, states, initialTransitionMatrix, initialEmissionMatrix]
     vitLearn = ViterbiLearning(viterbiData)
     estimatedStates = vitLearn.performViterbiLearning()
-    #print(estimatedStates)
-    vitLearn.generateBedFile(chrName, estimatedStates, cpgSitesAndProbs, thisCommandLine.args.outputPrefix)
+
+    vitLearn.generateBedFile(chrName, 
+                             estimatedStates, 
+                             cpgSitesAndProbs, 
+                             thisCommandLine.args.outputPrefix)
+    vitLearn.generateLogFiles(emissions, states,
+                             matrixEstimator.cpgThresholds, 
+                             vitLearn.emissionMatrix, 
+                             vitLearn.transitionMatrix, 
+                             thisCommandLine.args.outputPrefix)
 
 
 if __name__ == '__main__':
