@@ -574,17 +574,14 @@ class ViterbiLearning:
         # Output CDR regions to a BED file
         output_lines = []
         for cdr in newCDRRegions:
-            if (cdr[2] - cdr[1]) > 1000:
+            if (cdr[2] - cdr[1]) > 3000:
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tCDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,100\n"
             else: 
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tsmall_CDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,150\n"
             output_lines.append( line )
 
         for transition in newCDRTransitions:
-            if (transition[2] - transition[1]) > 1000:
-                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
-            else:
-                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
+            line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
             output_lines.append( line )
 
         # Output CDR transition regions to a separate BED file
