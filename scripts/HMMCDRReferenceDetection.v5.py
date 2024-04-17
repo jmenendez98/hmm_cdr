@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import argparse
-import tracemalloc
 
 ########################################################################
 # 2/1 Working on adding a 3rd 'CDR Transition' state
@@ -511,12 +510,6 @@ class ViterbiLearning:
         # Loops until the transition and emission matrices stay the same/converge
         count = 0 
         while prevTransitionSum != currTransitionSum or prevEmissionSum != currEmissionSum:
-            
-            snapshot = tracemalloc.take_snapshot() 
-            top_stats = snapshot.statistics('lineno') 
-            for stat in top_stats[:10]: 
-                print(stat)
-
             prevTransitionSum = set(self.transitionMatrix.values())
             prevEmissionSum = set(self.emissionMatrix.values())
 
@@ -633,9 +626,6 @@ class ViterbiLearning:
 
 
 def main(options=None):
-
-    tracemalloc.start()
-    
     '''
     Initializes the first transition and emission matrices and then runs Viterbi Learning to estimate CDR Regions
     '''
