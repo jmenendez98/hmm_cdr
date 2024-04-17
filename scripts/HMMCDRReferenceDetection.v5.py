@@ -452,7 +452,7 @@ class ViterbiLearning:
             # Dictionary to store the most probable path and its probability for the current step
             currStepProbs = {}
 
-            print('emissionStep: ', emissionStep)
+            #print('emissionStep: ', emissionStep)
 
             # Iterate over each possible hidden state (A, B, C)
             for indivState in self.transitionStates:  # Ensure 'C' is included in self.transitionStates
