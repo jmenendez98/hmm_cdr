@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import argparse
+import tracemalloc
 
 ########################################################################
 # 2/1 Working on adding a 3rd 'CDR Transition' state
@@ -451,6 +452,8 @@ class ViterbiLearning:
             # Dictionary to store the most probable path and its probability for the current step
             currStepProbs = {}
 
+            print('emissionStep: ', emissionStep)
+
             # Iterate over each possible hidden state (A, B, C)
             for indivState in self.transitionStates:  # Ensure 'C' is included in self.transitionStates
                 # Check if we are at the first position in the emission path
@@ -463,10 +466,10 @@ class ViterbiLearning:
                     currStepProbs[indivState] = initProb + np.log(self.emissionMatrix.get(emissionStr, -np.inf))  # Use a small log prob for missing entries
                 else:
                     # Variables to track the best path and its probability up to the current step
-                    bestCurrPath, bestProb = "", float("-inf")
+                    bestCurrStep, bestProb = "", float("-inf")
 
                     # Iterate over paths and their probabilities from the previous step
-                    for prevPath, prevProb in viterbiGraph[emissionStep - 1].items():
+                    for prevPath, prevProb in viterbiGraph[0].items():
                         # Construct the transition string from the last state of the previous path to the current state
                         transmissionStr = prevPath[-1] + indivState
                         # Construct the emission string for the current state and observed emission
@@ -477,12 +480,14 @@ class ViterbiLearning:
                         # Update the best path and its probability if the current path candidate has a higher probability
                         if currTotProb > bestProb:
                             bestProb = currTotProb
-                            bestCurrPath = prevPath + indivState
+                            bestCurrStep = prevPath + indivState
                     
                     # Store the most probable path and its probability for the current step
-                    currStepProbs[bestCurrPath] = bestProb
-            
+                    currStepProbs[bestCurrStep] = bestProb
+
+            # First clear the viterbi graph to handle a memory leak issue :(
             # Add the current step's probabilities to the Viterbi graph
+            viterbiGraph = []
             viterbiGraph.append(currStepProbs)
 
         # After processing all positions, return the path with the highest probability at the last step
@@ -504,16 +509,25 @@ class ViterbiLearning:
         currEmissionSum = set()
         
         # Loops until the transition and emission matrices stay the same/converge
+        count = 0 
         while prevTransitionSum != currTransitionSum or prevEmissionSum != currEmissionSum:
+            
+            snapshot = tracemalloc.take_snapshot() 
+            top_stats = snapshot.statistics('lineno') 
+            for stat in top_stats[:10]: 
+                print(stat)
+
             prevTransitionSum = set(self.transitionMatrix.values())
             prevEmissionSum = set(self.emissionMatrix.values())
 
+            print("Viterbi Algorithm: ", count)
             hiddenStates = self.estimateBestPath() # Viterbi Algorithm
+            print("Estimate HMM Parameters: ", count)
             self.transitionMatrix, self.emissionMatrix = self.parameterEstimation(hiddenStates) # Estimate HMM Parameters
 
             currTransitionSum = set(self.transitionMatrix.values())
             currEmissionSum = set(self.emissionMatrix.values())
-
+            count += 1
         return self.estimateBestPath()
 
     def generateBedFile(self, chr, estimatedStates, cpgSitesAndProbs, outputPrefix):
@@ -619,6 +633,9 @@ class ViterbiLearning:
 
 
 def main(options=None):
+
+    tracemalloc.start()
+    
     '''
     Initializes the first transition and emission matrices and then runs Viterbi Learning to estimate CDR Regions
     '''
