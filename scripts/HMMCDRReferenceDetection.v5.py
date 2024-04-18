@@ -1,13 +1,10 @@
 import numpy as np
-import pandas as pd
 import argparse
 
 ########################################################################
 # 2/1 Working on adding a 3rd 'CDR Transition' state
 # 2/4 Working on adding third emmision and calculating thresholds within script(so you dont have to pass in with -c)
 # 2/6 created 'strict' windowed method to calculate CDR transitions, want to pass them into this file with -t and have that be the third state
-
-# 4/4 adding log output, which contains emission thresholds(boundaries between states). Outputs those and emission/transition matrices
 ########################################################################
 
 ########################################################################
@@ -257,22 +254,6 @@ class InitialMatricesEstimate:
                               np.percentile( sorted(self.cpgSitesAndProbs.values()), 50 ),
                               np.percentile( sorted(self.cpgSitesAndProbs.values()), 75 )]
 
-        if self.cpgThresholds[-1] == 0:
-            # Extract and sort non-zero values
-            non_zero_values = sorted(x for x in self.cpgSitesAndProbs.values() if x > 0)
-            if non_zero_values:
-                # Ensure there are enough unique values to assign different thresholds
-                unique_values = sorted(set(non_zero_values))
-                # Define a function to safely access elements, avoiding index errors
-                def safe_access(lst, idx, default=0):
-                    return lst[idx] if idx < len(lst) else default
-                # Assign thresholds based on available unique values
-                self.cpgThresholds = [
-                    safe_access(unique_values, 0),  # First non-zero value
-                    safe_access(unique_values, len(unique_values) // 3),  # Approx. 33rd percentile of non-zero values
-                    safe_access(unique_values, 2 * len(unique_values) // 3)  # Approx. 66th percentile of non-zero values
-                ]
-
         # Variables to loop through CDR regions based on CpG site position and previous CpG site
         # in a CDR or not in a CDR
         cdrIndex = 0
@@ -343,7 +324,7 @@ class InitialMatricesEstimate:
 
             # Update emission matrix based on methylation probability
                 
-            methylationState = 'w' if cpgProb <= self.cpgThresholds[0] else ('x' if cpgProb <= self.cpgThresholds[1] else ('y' if cpgProb <= self.cpgThresholds[2] else 'z') )
+            methylationState = 'w' if cpgProb < self.cpgThresholds[0] else ('x' if cpgProb <= self.cpgThresholds[1] else ('y' if cpgProb <= self.cpgThresholds[2] else 'z') )
             emissionMatrix[state + methylationState] += 1
             emissionStateCounts[state] += 1
             path += methylationState
@@ -451,8 +432,6 @@ class ViterbiLearning:
             # Dictionary to store the most probable path and its probability for the current step
             currStepProbs = {}
 
-            #print('emissionStep: ', emissionStep)
-
             # Iterate over each possible hidden state (A, B, C)
             for indivState in self.transitionStates:  # Ensure 'C' is included in self.transitionStates
                 # Check if we are at the first position in the emission path
@@ -465,7 +444,7 @@ class ViterbiLearning:
                     currStepProbs[indivState] = initProb + np.log(self.emissionMatrix.get(emissionStr, -np.inf))  # Use a small log prob for missing entries
                 else:
                     # Variables to track the best path and its probability up to the current step
-                    bestCurrStep, bestProb = "", float("-inf")
+                    bestCurrPath, bestProb = "", float("-inf")
 
                     # Iterate over paths and their probabilities from the previous step
                     for prevPath, prevProb in viterbiGraph[0].items():
@@ -479,12 +458,11 @@ class ViterbiLearning:
                         # Update the best path and its probability if the current path candidate has a higher probability
                         if currTotProb > bestProb:
                             bestProb = currTotProb
-                            bestCurrStep = prevPath + indivState
+                            bestCurrPath = prevPath + indivState
                     
                     # Store the most probable path and its probability for the current step
-                    currStepProbs[bestCurrStep] = bestProb
-
-            # First clear the viterbi graph to handle a memory leak issue :(
+                    currStepProbs[bestCurrPath] = bestProb
+            
             # Add the current step's probabilities to the Viterbi graph
             viterbiGraph = []
             viterbiGraph.append(currStepProbs)
@@ -508,19 +486,21 @@ class ViterbiLearning:
         currEmissionSum = set()
         
         # Loops until the transition and emission matrices stay the same/converge
-        count = 0 
+        learnCount = 0
         while prevTransitionSum != currTransitionSum or prevEmissionSum != currEmissionSum:
             prevTransitionSum = set(self.transitionMatrix.values())
             prevEmissionSum = set(self.emissionMatrix.values())
 
-            print("Viterbi Algorithm: ", count)
             hiddenStates = self.estimateBestPath() # Viterbi Algorithm
-            print("Estimate HMM Parameters: ", count)
             self.transitionMatrix, self.emissionMatrix = self.parameterEstimation(hiddenStates) # Estimate HMM Parameters
 
             currTransitionSum = set(self.transitionMatrix.values())
             currEmissionSum = set(self.emissionMatrix.values())
-            count += 1
+
+            if learnCount > 100000:
+                break
+            learnCount += 1
+
         return self.estimateBestPath()
 
     def generateBedFile(self, chr, estimatedStates, cpgSitesAndProbs, outputPrefix):
@@ -574,53 +554,22 @@ class ViterbiLearning:
         # Output CDR regions to a BED file
         output_lines = []
         for cdr in newCDRRegions:
-            if (cdr[2] - cdr[1]) > 3000:
+            if (cdr[2] - cdr[1]) > 1000:
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tCDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,100\n"
-            else: 
+            else:
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tsmall_CDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,150\n"
             output_lines.append( line )
 
         for transition in newCDRTransitions:
-            line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
-            output_lines.append( line )
+            if (transition[2] - transition[1]) > 1000:
+                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
+            else:
+                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
 
         # Output CDR transition regions to a separate BED file
-        output = outputPrefix + '.bed'
-        with open(output, "w") as file:
+        with open(outputPrefix, "w") as file:
             for line in output_lines:
                 file.write(line)
-
-    def generateLogFiles(self, emissions, states, cpgThresholds, emissionMatrix, transitionMatrix, outputPrefix):
-        '''
-        Creates log files that contain the emission boundaries + emission/transition matrices
-
-        Attributes:
-        - cpgThresholds: 
-        - emissionMatrix: 
-        - transitionMatrix:
-        - outputPrefix:
-        '''
-
-        # write the file with emission boundaries
-        thresholds_output = outputPrefix + '.emission_boundaries.csv'
-        with open(thresholds_output, "w") as file:
-            for threshold in cpgThresholds:
-                file.write(str(threshold) + ', ')
-        
-        emissionMatrix_output = outputPrefix + '.emission_matrix.csv'
-        emissionMatrix_df = pd.DataFrame(index=emissions, columns=states)
-        for key, value in emissionMatrix.items():
-            row, col = key[1], key[0]
-            emissionMatrix_df.at[row, col] = value
-        emissionMatrix_df.to_csv(emissionMatrix_output)
-
-        transitionMatrix_output = outputPrefix + '.transition_matrix.csv'
-        transitionMatrix_df = pd.DataFrame(index=states, columns=states)
-        for key, value in transitionMatrix.items():
-            row, col = key[1], key[0]
-            transitionMatrix_df.at[row, col] = value
-        transitionMatrix_df.to_csv(transitionMatrix_output)
-
 
 def main(options=None):
     '''
@@ -645,14 +594,8 @@ def main(options=None):
         chrName = matrixEstimator.getChrName()
         cpgSitesAndProbs = matrixEstimator.getCpGSitesAndProbs()
     else:
-        initialTransitionMatrix = {'AA': thisCommandLine.args.aa/100, 
-                                   'AB': thisCommandLine.args.ab/100, 
-                                   'BA': thisCommandLine.args.ba/100, 
-                                   'BB': thisCommandLine.args.bb/100}
-        initialEmissionMatrix = {'Ax': thisCommandLine.args.ax/100, 
-                                 'Ay': thisCommandLine.args.ay/100, 
-                                 'Bx': thisCommandLine.args.bx/100, 
-                                 'By': thisCommandLine.args.by/100}
+        initialTransitionMatrix = {'AA': thisCommandLine.args.aa/100, 'AB': thisCommandLine.args.ab/100, 'BA': thisCommandLine.args.ba/100, 'BB': thisCommandLine.args.bb/100}
+        initialEmissionMatrix = {'Ax': thisCommandLine.args.ax/100, 'Ay': thisCommandLine.args.ay/100, 'Bx': thisCommandLine.args.bx/100, 'By': thisCommandLine.args.by/100}
         # Creates pathEstimator object to get initial transition and emission matrix
         pathEstimator = PathEstimate(thisCommandLine.args.modPosFile)
         path = pathEstimator.getPath()
@@ -660,7 +603,7 @@ def main(options=None):
         cpgSitesAndProbs = pathEstimator.getCpGSitesAndProbs()
 
     # States and emission of HMM Model
-    states = ["A", "B", "C"] # A - Not a CDR, B - CDR Transition, C - CDR
+    states = ["A", "B", "C"] # A - CDR, B - Not a CDR, C - CDR Transition
     emissions = ["w", "x", "y", "z"] # w - 1/4 quartile of methylation distribution, x - 2/4 quartile of methylation distribution, 
                                         # y - 3/4 quartile of methylation distribution, z - 4/4 quartile of methylation distribution
 
@@ -668,16 +611,7 @@ def main(options=None):
     viterbiData = [path, emissions, states, initialTransitionMatrix, initialEmissionMatrix]
     vitLearn = ViterbiLearning(viterbiData)
     estimatedStates = vitLearn.performViterbiLearning()
-
-    vitLearn.generateBedFile(chrName, 
-                             estimatedStates, 
-                             cpgSitesAndProbs, 
-                             thisCommandLine.args.outputPrefix)
-    vitLearn.generateLogFiles(emissions, states,
-                             matrixEstimator.cpgThresholds, 
-                             vitLearn.emissionMatrix, 
-                             vitLearn.transitionMatrix, 
-                             thisCommandLine.args.outputPrefix)
+    vitLearn.generateBedFile(chrName, estimatedStates, cpgSitesAndProbs, thisCommandLine.args.outputPrefix)
 
 
 if __name__ == '__main__':
