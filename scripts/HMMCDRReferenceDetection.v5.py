@@ -574,6 +574,7 @@ class ViterbiLearning:
             else:
                 line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
 
+        print('hmmCDRs Written to:', outputPrefix)
         # Output CDR transition regions to a separate BED file
         with open(outputPrefix, "w") as file:
             for line in output_lines:
@@ -590,26 +591,29 @@ class ViterbiLearning:
         - outputPrefix:
         '''
 
-        outputPrefix = outputPrefix.replace('.bed', '')
+        outPre = outputPrefix.replace('.bed', '')
         # write the file with emission boundaries
-        thresholds_output = outputPrefix + '.emission_boundaries.csv'
+        thresholds_output = outPre + '.emission_boundaries.csv'
         with open(thresholds_output, "w") as file:
             for threshold in cpgThresholds:
                 file.write(str(threshold) + ', ')
+        print('Emission Boundaries Written to:', thresholds_output)
         
-        emissionMatrix_output = outputPrefix + '.emission_matrix.csv'
+        emissionMatrix_output = outPre + '.emission_matrix.csv'
         emissionMatrix_df = pd.DataFrame(index=emissions, columns=states)
         for key, value in emissionMatrix.items():
             row, col = key[1], key[0]
             emissionMatrix_df.at[row, col] = value
         emissionMatrix_df.to_csv(emissionMatrix_output)
+        print('Emission Matrix Written to:', emissionMatrix_output)
 
-        transitionMatrix_output = outputPrefix + '.transition_matrix.csv'
+        transitionMatrix_output = outPre + '.transition_matrix.csv'
         transitionMatrix_df = pd.DataFrame(index=states, columns=states)
         for key, value in transitionMatrix.items():
             row, col = key[1], key[0]
             transitionMatrix_df.at[row, col] = value
         transitionMatrix_df.to_csv(transitionMatrix_output)
+        print('Transitions Matrix Written to:', transitionMatrix_output)
 
 
 def main(options=None):
