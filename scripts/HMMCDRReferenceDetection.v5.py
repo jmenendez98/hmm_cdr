@@ -380,7 +380,9 @@ class ViterbiLearning:
         - hiddenStates: String representing the current hidden state path estimate.
         '''
 
-        learning_rate = 0.05
+        transition_learning_rate = 0.005
+        emission_learning_rate = 0.05
+
         # Initialize new transition and emission matrices with small non-zero values to avoid division by zero
         newTransitionMatrix = {transition: 1e-10 for transition in self.transitionMatrix.keys()}
         newEmissionMatrix = {emission: 1e-10 for emission in self.emissionMatrix.keys()}
@@ -410,13 +412,13 @@ class ViterbiLearning:
         for transition, count in newTransitionMatrix.items():
             startState = transition[0]  # Extract the start state from the transition string
             newTransitionMatrix[transition] /= transitionTotalCount[startState]
-            newTransitionMatrix[transition] = ((1 - learning_rate) * self.transitionMatrix[transition]) + (learning_rate * newTransitionMatrix[transition])
+            newTransitionMatrix[transition] = ((1 - transition_learning_rate) * self.transitionMatrix[transition]) + (transition_learning_rate * newTransitionMatrix[transition])
 
         # Normalize emission probabilities
         for emission, count in newEmissionMatrix.items():
             state = emission[0]  # Extract the state from the emission string
             newEmissionMatrix[emission] /= emissionTotalCount[state]
-            newEmissionMatrix[emission] = ((1 - learning_rate) * self.emissionMatrix[emission]) + (learning_rate * newEmissionMatrix[emission])
+            newEmissionMatrix[emission] = ((1 - emission_learning_rate) * self.emissionMatrix[emission]) + (emission_learning_rate * newEmissionMatrix[emission])
 
         # Return the updated transition and emission matrices
         return newTransitionMatrix, newEmissionMatrix
@@ -501,6 +503,8 @@ class ViterbiLearning:
             currTransitionSum = set(self.transitionMatrix.values())
             currEmissionSum = set(self.emissionMatrix.values())
 
+            print("Viterbi Learning Iteration:", learnCount+1)
+            
             if learnCount > 100:
                 break
             learnCount += 1
