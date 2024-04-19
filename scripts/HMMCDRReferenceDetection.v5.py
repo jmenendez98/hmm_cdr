@@ -571,8 +571,7 @@ class ViterbiLearning:
                 line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
 
         # Output CDR transition regions to a separate BED file
-        output = outputPrefix
-        with open(output, "w") as file:
+        with open(outputPrefix, "w") as file:
             for line in output_lines:
                 file.write(line)
 
@@ -587,6 +586,7 @@ class ViterbiLearning:
         - outputPrefix:
         '''
 
+        outputPrefix = outputPrefix.replace('.bed', '')
         # write the file with emission boundaries
         thresholds_output = outputPrefix + '.emission_boundaries.csv'
         with open(thresholds_output, "w") as file:
