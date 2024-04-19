@@ -1,5 +1,6 @@
-import numpy as np
 import argparse
+import numpy as np
+import pandas as pd
 
 ########################################################################
 # 2/1 Working on adding a 3rd 'CDR Transition' state
@@ -379,6 +380,7 @@ class ViterbiLearning:
         - hiddenStates: String representing the current hidden state path estimate.
         '''
 
+        learning_rate = 0.05
         # Initialize new transition and emission matrices with small non-zero values to avoid division by zero
         newTransitionMatrix = {transition: 1e-10 for transition in self.transitionMatrix.keys()}
         newEmissionMatrix = {emission: 1e-10 for emission in self.emissionMatrix.keys()}
@@ -408,11 +410,13 @@ class ViterbiLearning:
         for transition, count in newTransitionMatrix.items():
             startState = transition[0]  # Extract the start state from the transition string
             newTransitionMatrix[transition] /= transitionTotalCount[startState]
+            newTransitionMatrix[transition] = ((1 - learning_rate) * self.transitionMatrix[transition]) + (learning_rate * newTransitionMatrix[transition])
 
         # Normalize emission probabilities
         for emission, count in newEmissionMatrix.items():
             state = emission[0]  # Extract the state from the emission string
             newEmissionMatrix[emission] /= emissionTotalCount[state]
+            newEmissionMatrix[emission] = ((1 - learning_rate) * self.emissionMatrix[emission]) + (learning_rate * newEmissionMatrix[emission])
 
         # Return the updated transition and emission matrices
         return newTransitionMatrix, newEmissionMatrix
@@ -497,7 +501,7 @@ class ViterbiLearning:
             currTransitionSum = set(self.transitionMatrix.values())
             currEmissionSum = set(self.emissionMatrix.values())
 
-            if learnCount > 100000:
+            if learnCount > 100:
                 break
             learnCount += 1
 
@@ -571,6 +575,38 @@ class ViterbiLearning:
             for line in output_lines:
                 file.write(line)
 
+    def generateLogFiles(self, emissions, states, cpgThresholds, emissionMatrix, transitionMatrix, outputPrefix):
+        '''
+        Creates log files that contain the emission boundaries + emission/transition matrices
+
+        Attributes:
+        - cpgThresholds: 
+        - emissionMatrix: 
+        - transitionMatrix:
+        - outputPrefix:
+        '''
+
+        # write the file with emission boundaries
+        thresholds_output = outputPrefix + '.emission_boundaries.csv'
+        with open(thresholds_output, "w") as file:
+            for threshold in cpgThresholds:
+                file.write(str(threshold) + ', ')
+        
+        emissionMatrix_output = outputPrefix + '.emission_matrix.csv'
+        emissionMatrix_df = pd.DataFrame(index=emissions, columns=states)
+        for key, value in emissionMatrix.items():
+            row, col = key[1], key[0]
+            emissionMatrix_df.at[row, col] = value
+        emissionMatrix_df.to_csv(emissionMatrix_output)
+
+        transitionMatrix_output = outputPrefix + '.transition_matrix.csv'
+        transitionMatrix_df = pd.DataFrame(index=states, columns=states)
+        for key, value in transitionMatrix.items():
+            row, col = key[1], key[0]
+            transitionMatrix_df.at[row, col] = value
+        transitionMatrix_df.to_csv(transitionMatrix_output)
+
+
 def main(options=None):
     '''
     Initializes the first transition and emission matrices and then runs Viterbi Learning to estimate CDR Regions
@@ -611,7 +647,17 @@ def main(options=None):
     viterbiData = [path, emissions, states, initialTransitionMatrix, initialEmissionMatrix]
     vitLearn = ViterbiLearning(viterbiData)
     estimatedStates = vitLearn.performViterbiLearning()
-    vitLearn.generateBedFile(chrName, estimatedStates, cpgSitesAndProbs, thisCommandLine.args.outputPrefix)
+    vitLearn.generateBedFile(chrName, 
+                             estimatedStates, 
+                             cpgSitesAndProbs, 
+                             thisCommandLine.args.outputPrefix)
+    
+    vitLearn.generateLogFiles(emissions, 
+                              states,
+                              matrixEstimator.cpgThresholds, 
+                              vitLearn.emissionMatrix, 
+                              vitLearn.transitionMatrix, 
+                              thisCommandLine.args.outputPrefix)
 
 
 if __name__ == '__main__':
