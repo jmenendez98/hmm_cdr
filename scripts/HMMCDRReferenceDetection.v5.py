@@ -571,8 +571,8 @@ class ViterbiLearning:
                 line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
 
         # Output CDR transition regions to a separate BED file
-        output = outputPrefix + ".bed"
-        with open(outputPrefix, "w") as file:
+        output = outputPrefix
+        with open(output, "w") as file:
             for line in output_lines:
                 file.write(line)
 
