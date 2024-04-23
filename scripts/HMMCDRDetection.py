@@ -258,10 +258,11 @@ class InitialMatricesEstimate:
                     continue
 
         # Set variable thresholds for the different types of emissions (2/4)
-        # first value is the q33, and the second is the q66
-        self.cpgThresholds = [np.percentile( sorted(self.cpgSitesAndProbs.values()), 25 ),
-                              np.percentile( sorted(self.cpgSitesAndProbs.values()), 50 ),
-                              np.percentile( sorted(self.cpgSitesAndProbs.values()), 75 )]
+        # first value is 0, next is Q33 of non-zeros, last is Q66 of non-zeros (zeros are the majority most of the time)
+        nonzeros = sorted(self.cpgSitesAndProbs.values())
+        self.cpgThresholds = [0,
+                              np.percentile( nonzeros, 1/3 ),
+                              np.percentile( nonzeros, 2/3 )]
 
         # Variables to loop through CDR regions based on CpG site position and previous CpG site
         # in a CDR or not in a CDR
@@ -292,6 +293,12 @@ class InitialMatricesEstimate:
                 prevStateCounts[prevState] += 1
 
             prevCPGsiteState = state
+
+        # Correct emission matrix to have all CDRs enter/exit to a transition first(no matter how small)
+        transitionMatrix['BA'] = transitionMatrix['BA'] + transitionMatrix['CA']
+        transitionMatrix['CA'] = 0.0
+        transitionMatrix['BC'] = transitionMatrix['BC'] + transitionMatrix['AC']
+        transitionMatrix['AC'] = 0.0
 
         # Normalize transition matrix
         for key in transitionMatrix:
@@ -565,14 +572,14 @@ class ViterbiLearning:
         # Output CDR regions to a BED file
         output_lines = []
         for cdr in newCDRRegions:
-            if (cdr[2] - cdr[1]) > 1000:
+            if (cdr[2] - cdr[1]) > 3000:
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tCDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,100\n"
             else:
                 line = f"{cdr[0]}\t{cdr[1]}\t{cdr[2]}\tsmall_CDR\t0\t.\t{cdr[1]}\t{cdr[2]}\t0,25,150\n"
             output_lines.append( line )
 
         for transition in newCDRTransitions:
-            if (transition[2] - transition[1]) > 1000:
+            if (transition[2] - transition[1]) > 3000:
                 line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
             else:
                 line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
