@@ -508,8 +508,6 @@ class ViterbiLearning:
             currTransitionSum = set(self.transitionMatrix.values())
             currEmissionSum = set(self.emissionMatrix.values())
 
-            print("Viterbi Learning Iteration:", learnCount+1)
-            
             if learnCount+1 >= 100:
                 break
             learnCount += 1
