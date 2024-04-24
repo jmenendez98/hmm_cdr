@@ -261,8 +261,8 @@ class InitialMatricesEstimate:
         # first value is 0, next is Q33 of non-zeros, last is Q66 of non-zeros (zeros are the majority most of the time)
         nonzeros = sorted( [value for value in self.cpgSitesAndProbs.values() if value != 0] )
         self.cpgThresholds = [0.0,
-                              np.percentile( nonzeros, 1/3 ),
-                              np.percentile( nonzeros, 2/3 )]
+                              np.percentile( nonzeros, 100/3 ),
+                              np.percentile( nonzeros, 200/3 )]
 
         # Variables to loop through CDR regions based on CpG site position and previous CpG site
         # in a CDR or not in a CDR
