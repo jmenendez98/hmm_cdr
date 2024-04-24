@@ -259,7 +259,7 @@ class InitialMatricesEstimate:
 
         # Set variable thresholds for the different types of emissions (2/4)
         # first value is 0, next is Q33 of non-zeros, last is Q66 of non-zeros (zeros are the majority most of the time)
-        nonzeros = sorted(self.cpgSitesAndProbs.values())
+        nonzeros = sorted( [value for value in self.cpgSitesAndProbs.values() if value != 0] )
         self.cpgThresholds = [0,
                               np.percentile( nonzeros, 1/3 ),
                               np.percentile( nonzeros, 2/3 )]
