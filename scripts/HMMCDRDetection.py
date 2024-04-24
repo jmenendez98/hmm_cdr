@@ -296,9 +296,9 @@ class InitialMatricesEstimate:
 
         # Correct emission matrix to have all CDRs enter/exit to a transition first(no matter how small)
         transitionMatrix['BA'] = transitionMatrix['BA'] + transitionMatrix['CA']
-        transitionMatrix['CA'] = 0.0
+        transitionMatrix['CA'] = 1e-20
         transitionMatrix['BC'] = transitionMatrix['BC'] + transitionMatrix['AC']
-        transitionMatrix['AC'] = 0.0
+        transitionMatrix['AC'] = 1e-20
 
         # Normalize transition matrix
         for key in transitionMatrix:
