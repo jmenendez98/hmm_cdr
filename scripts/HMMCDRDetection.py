@@ -340,7 +340,7 @@ class InitialMatricesEstimate:
 
             # Update emission matrix based on methylation probability
                 
-            methylationState = 'w' if cpgProb < self.cpgThresholds[0] else ('x' if cpgProb <= self.cpgThresholds[1] else ('y' if cpgProb <= self.cpgThresholds[2] else 'z') )
+            methylationState = 'w' if cpgProb <= self.cpgThresholds[0] else ('x' if cpgProb <= self.cpgThresholds[1] else ('y' if cpgProb <= self.cpgThresholds[2] else 'z') )
             emissionMatrix[state + methylationState] += 1
             emissionStateCounts[state] += 1
             path += methylationState
