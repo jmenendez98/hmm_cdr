@@ -663,6 +663,9 @@ def main(options=None):
     
     vitLearn = ViterbiLearning(viterbiData)
     estimatedStates = vitLearn.performViterbiLearning()
+
+    print( estimatedStates )
+
     vitLearn.generateBedFile(chrName, 
                              estimatedStates, 
                              cpgSitesAndProbs, 
