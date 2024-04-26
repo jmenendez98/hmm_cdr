@@ -568,6 +568,18 @@ class ViterbiLearning:
             newCDRRegions[-1][2] = list(cpgSitesAndProbs.keys())[-1]
         if newCDRTransitions and newCDRTransitions[-1][2] == -1:
             newCDRTransitions[-1][2] = list(cpgSitesAndProbs.keys())[-1]
+            
+        # Filter Transitions that are not CDR adjacent
+        def filter_transitions(transitions, cdrs):
+            filtered_transitions = []
+            for chrom_t, start_t, end_t in transitions:
+                for chrom_cdr, start_cdr, end_cdr in cdrs:
+                    if chrom_t == chrom_cdr:
+                        if (abs(start_t - start_cdr) <= 1000) or (abs(end_t - end_cdr) <= 1000) or (abs(end_t - start_cdr) <= 1000) or (abs(start_t - end_cdr) <= 1000):
+                            filtered_transitions.append([chrom_t, start_t, end_t])
+                            break  # Break the inner loop if transition is within 1000 bp of a CDR
+            return filtered_transitions
+        newCDRTransitions = filter_transitions(transitions=newCDRTransitions, cdrs=newCDRRegions)
 
         # Output CDR regions to a BED file
         output_lines = []
@@ -579,10 +591,12 @@ class ViterbiLearning:
             output_lines.append( line )
 
         for transition in newCDRTransitions:
-            if (transition[2] - transition[1]) > 3000:
-                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,200\n"
-            else:
-                line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tsmall_CDR_Intermediate\t0\t.\t{transition[1]}\t{transition[2]}\t0,0,255\n"
+            line = f"{transition[0]}\t{transition[1]}\t{transition[2]}\tCDR_Transition\t0\t.\t{transition[1]}\t{transition[2]}\t0,25,250\n"
+            output_lines.append( line )
+
+        #print( 'newCDRRegions:', newCDRRegions )
+        #print( 'newCDRTransitions:', newCDRTransitions )
+        #print( 'output_lines:', output_lines )
 
         # Output CDR transition regions to a separate BED file
         with open(outputPrefix, "w") as file:
