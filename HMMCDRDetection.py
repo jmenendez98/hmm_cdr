@@ -51,20 +51,20 @@ class CommandLine() :
                             const=True,
                             required=False,
                             default="0.0000001",
-                            metavar="Learning Rate for the Viterbi Learning.",
+                            metavar="Learning Rate for the Viterbi Learning",
                             help="Sets the learning rate for the Viterbi Learning")
         self.parser.add_argument("-p", "--modPosFile",
                             required=True,
                             metavar="bed file containing modified CPG site probabilities",
-                            help="The bed file that contains CpG sites and their estimated mod probabilties (File is an output of pb-CpG-Tools/aligned_bam_to_cpg_scores.py)")
+                            help="The bed file that contains CpG sites and their estimated mod probabilties (File is an output of modkit)")
         self.parser.add_argument("-s", "--strictBedFile",
                             required=False,
                             metavar="bed file containing estimate CDR Regions",
                             help="bed file containing estimate CDR Regions with chromosome, starting position and ending positon")
         self.parser.add_argument("-o", "--outputPrefix",
                             required=True,
-                            metavar="output prefix",
-                            help="The output prefix")
+                            metavar="output bed file",
+                            help="The output bed file name")
 
 
         self.parser.add_argument("-aa",
